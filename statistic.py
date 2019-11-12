@@ -97,14 +97,36 @@ for index, row in df.iterrows():
     df.loc[index] = row
 
 
+
+
+#%%
+# 建立一个value全部为零的字典
+CountWin = ContinuousBack 
+for value in CountWin:
+    CountWin[value] = 0
+#%%
+winteam = ''
+for index, row in df.iterrows():
+    if row['homewin'] == True:
+        winteam = row['Home/Neutral']
+    else:
+        winteam = row['Visitor/Neutral']
+    CountWin[winteam] += 1
+#%%
+df['totalscore'] = None
+for index, row in df.iterrows():
+    if row['Home/Neutral'] < row['Visitor/Neutral']:
+        row['totalscore'] = False
+    else:
+        row['totalscore'] = True
+    df.loc[index] = row
+# %%
 clf = DecisionTreeClassifier(random_state=14)
-#x_previouswins = df[['HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack']].values
-x_previouswins = df[['defense','attack']].values
+#x_previouswins = df[['HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values
+x_previouswins = df[['totalscore','defense','attack']].values
 scores = cross_val_score(clf,x_previouswins, y_value,scoring='accuracy')
 print('Accuracy: {0:.1f}%'.format(np.mean(scores)*100))
 
 
 # %%
 
-
-# %%
