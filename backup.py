@@ -42,6 +42,7 @@ def flat(*data):
         return a, b, c
 
 
+
 def plot(*data, d2='line', d3='scatter'):
     # 2d
     if len(data) != 3:
