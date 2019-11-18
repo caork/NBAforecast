@@ -45,7 +45,13 @@ def flat(*data):
 
 def plot(*data, d2='line', d3='scatter'):
     # 2d
-    if len(data) != 3:
+    if d2 == 'hot':
+        a = data[0]
+        a = np.array(a)
+        plt.imshow(a)
+        plt.colorbar()
+        plt.show()
+    elif len(data) != 3:
 
         if len(data) == 1:
             a = np.arange(1, len(data[0])+1)
@@ -74,7 +80,7 @@ def plot(*data, d2='line', d3='scatter'):
             plt.plot(a, b)
 
     # 3d
-    if len(data) == 3:
+    elif len(data) == 3:
         from mpl_toolkits.mplot3d import Axes3D
         a, b, c = data
         a = np.array(a)

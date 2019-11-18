@@ -6,17 +6,20 @@
 # 首先使用pandas读取csv数据
 #%%
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score
 from collections import defaultdict
 import pandas as pd
 import numpy as np
+
+# %%
 from backup import *
 location = r'/home/jsao/Documents/pycode/dataset.csv'
 df = pd.read_csv(location, parse_dates=["Date"])
 
 # len(df) #查看球赛数量
 # out： 1312  #1312场球赛
-
+#%%
 # df.head() #查看数据前五行
 # out：
 '''
@@ -130,4 +133,15 @@ print('Accuracy: {0:.1f}%'.format(np.mean(scores)*100))
 
 
 # %%
+#　使用随机森林
 
+rfc = RandomForestClassifier()
+x_previouswins = df[['HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values
+scores = cross_val_score(rfc,x_previouswins, y_value,scoring='accuracy')
+print('Accuracy: {0:.1f}%'.format(np.mean(scores)*100))
+
+# %%
+correlation_matrix = np.corrcoef(df[['HomeWin''HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values, rowvar=0) 
+
+
+# %%
