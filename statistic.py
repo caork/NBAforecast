@@ -4,22 +4,25 @@
 
 
 # 首先使用pandas读取csv数据
-#%%
+# %%
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score
 from collections import defaultdict
 import pandas as pd
+import xgboost as xgb
+from xgboost.sklearn import XGBClassifier
 import numpy as np
 
 # %%
 from backup import *
-location = r'/home/jsao/Documents/pycode/dataset.csv'
+
+location = r'dataset.csv'
 df = pd.read_csv(location, parse_dates=["Date"])
 
 # len(df) #查看球赛数量
 # out： 1312  #1312场球赛
-#%%
+# %%
 # df.head() #查看数据前五行
 # out：
 '''
@@ -69,9 +72,10 @@ back_to_back_visitor = ''
 ContinuousBack = won_last
 for index, row in df.iterrows():
     if index != 0:
-        back_to_back_visitor = df.iloc[index-1, 2]
-        back_to_back_home = df.iloc[index-1, 4]
-    if row['Visitor/Neutral'] not in [back_to_back_home, back_to_back_visitor] or row['Home/Neutral'] not in [back_to_back_home, back_to_back_visitor]:
+        back_to_back_visitor = df.iloc[index - 1, 2]
+        back_to_back_home = df.iloc[index - 1, 4]
+    if row['Visitor/Neutral'] not in [back_to_back_home, back_to_back_visitor] or row['Home/Neutral'] not in [
+        back_to_back_home, back_to_back_visitor]:
         row['Back_to_Back'] = True
     else:
         row['Back_to_Back'] = False
@@ -85,30 +89,27 @@ for index, row in df.iterrows():
     ContinuousBack[visitor_team] = True
     df.loc[index] = row
 
-#加入进攻效率和防守效率排行
+# 加入进攻效率和防守效率排行
 df['defense'] = None
 df['attack'] = None
-team = pd.read_csv(r'/home/jsao/Documents/pycode/team.csv')
+team = pd.read_csv(r'team.csv')
 for index, row in df.iterrows():
     HomeTeam = row['Home/Neutral']
-    VisitorTeam = row['Visitor/Neutral'] #have not check yet
-    HomeAttackScore = team.loc[team['team'] == HomeTeam,'attack']
-    VisitorAttackScore = team.loc[team['team'] == VisitorTeam,'attack']
-    HomeDefenseScore = team.loc[team['team'] == HomeTeam,'defense']
-    VisitorDefenseScore = team.loc[team['team'] == VisitorTeam,'defense']
+    VisitorTeam = row['Visitor/Neutral']  # have not check yet
+    HomeAttackScore = team.loc[team['team'] == HomeTeam, 'attack']
+    VisitorAttackScore = team.loc[team['team'] == VisitorTeam, 'attack']
+    HomeDefenseScore = team.loc[team['team'] == HomeTeam, 'defense']
+    VisitorDefenseScore = team.loc[team['team'] == VisitorTeam, 'defense']
     row['attack'] = int(HomeAttackScore) < int(VisitorAttackScore)
     row['defense'] = int(HomeDefenseScore) < int(VisitorDefenseScore)
     df.loc[index] = row
 
-
-
-
-#%%
+# %%
 # 建立一个value全部为零的字典
-CountWin = ContinuousBack 
+CountWin = ContinuousBack
 for value in CountWin:
     CountWin[value] = 0
-#%%
+# %%
 winteam = ''
 for index, row in df.iterrows():
     if row['homewin'] == True:
@@ -116,7 +117,7 @@ for index, row in df.iterrows():
     else:
         winteam = row['Visitor/Neutral']
     CountWin[winteam] += 1
-#%%
+# %%
 df['totalscore'] = None
 for index, row in df.iterrows():
     if row['Home/Neutral'] < row['Visitor/Neutral']:
@@ -124,24 +125,54 @@ for index, row in df.iterrows():
     else:
         row['totalscore'] = True
     df.loc[index] = row
+
 # %%
 clf = DecisionTreeClassifier(random_state=14)
-#x_previouswins = df[['HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values
-x_previouswins = df[['totalscore','defense','attack']].values
-scores = cross_val_score(clf,x_previouswins, y_value,scoring='accuracy')
-print('Accuracy: {0:.1f}%'.format(np.mean(scores)*100))
-
+# x_previouswins = df[['HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values
+x_previouswins = df[['home_team','visitor_team']].values
+scores = cross_val_score(clf, x_previouswins, y_value, scoring='accuracy')
+print('Accuracy: {0:.1f}%'.format(np.mean(scores) * 100))
 
 # %%
-#　使用随机森林
+# 　使用随机森林
 
 rfc = RandomForestClassifier()
-x_previouswins = df[['HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values
-scores = cross_val_score(rfc,x_previouswins, y_value,scoring='accuracy')
-print('Accuracy: {0:.1f}%'.format(np.mean(scores)*100))
+x_previouswins = df[
+    ['home_team','visitor_team']].values
+scores = cross_val_score(rfc, x_previouswins, y_value, scoring='accuracy')
+print('Accuracy: {0:.1f}%'.format(np.mean(scores) * 100))
 
 # %%
-correlation_matrix = np.corrcoef(df[['HomeWin''HomeLastWin','VisitorLastWin','Back_to_Back','ContinuousBack','defense','attack','totalscore']].values, rowvar=0) 
-
+correlation_matrix = np.corrcoef(df[['HomeWin''HomeLastWin', 'VisitorLastWin', 'Back_to_Back', 'ContinuousBack',
+                                     'defense', 'attack', 'totalscore']].values, rowvar=0)
 
 # %%
+# Mon May 31 2021 xgboost model added
+
+# set a number that can represent the team
+name_lists = list(df['Visitor/Neutral'].unique())
+name_numbers = np.linspace(1, 30, 30)
+name_lists_dict = dict(zip(name_lists,name_numbers))
+df['home_team'] = df['Home/Neutral']
+df['visitor_team'] = df['Visitor/Neutral']
+df['home_team'].replace(name_lists_dict,inplace=True)
+df['visitor_team'].replace(name_lists_dict,inplace=True)
+#%%
+xgb = XGBClassifier(learning_rate=0.1, n_estimators=190, max_depth=4, min_child_weight=2, subsample=0.9, colsample_bytree=0.8, seed=23333)
+x_previouswins = df[
+    ['home_team','visitor_team']].values
+scores = cross_val_score(xgb, x_previouswins, y_value, scoring='accuracy')
+print('Accuracy: {0:.1f}%'.format(np.mean(scores) * 100))
+#%%
+np.corrcoef(df[['PTS', 'PTS.1',
+       'Attend.','homewin',
+       'HomeLastWin', 'VisitorLastWin', 'Back_to_Back', 'ContinuousBack',
+       'defense', 'attack', 'totalscore', 'home_team', 'visitor_team']])
+#%%
+newdf = df.copy()
+#%%
+newdf = newdf.replace({True:1,False:2})
+#%%
+newdf['value'] = y_value
+#%%
+corrs = newdf.corr()
